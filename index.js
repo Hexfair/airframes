@@ -4,14 +4,6 @@ import fs from 'fs';
 const regexp1 = /\/ID\w{4,6}/i;
 const regexp2 = /[a-zA-Z]{3}\w{6}\d{3}\//i;
 
-const parseDate = new Date();
-const year = parseDate.getFullYear();
-const month = parseDate.getMonth() + 1 < 10 ? `0${parseDate.getMonth()}` : parseDate.getMonth();
-const day = parseDate.getDate() + 1 < 10 ? `0${parseDate.getDate()}` : parseDate.getDate();
-const hours = parseDate.getHours() < 10 ? `0${parseDate.getHours()}` : parseDate.getHours();
-const minutes = parseDate.getMinutes() < 10 ? `0${parseDate.getMinutes()}` : parseDate.getMinutes();
-const date = `${year}-${month}-${day}--${hours}.${minutes}`;
-
 const URL = [
 	'https://api.airframes.io/messages?limit=300&labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=MDINI',
 	'https://api.airframes.io/messages?limit=300&labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=FPN%2FID',
@@ -24,21 +16,32 @@ const URL = [
 	'https://api.airframes.io/messages?limit=300&labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=%2FMR'
 ];
 
-let arr = [];
-let result = [];
-let unique = [];
-let lastDate;
-
-fs.readFile('./date.txt', "utf8", (err, data) => {
-	if (err) {
-		console.error(`Ошибка чтения файла "date.txt"...`, err);
-		return;
-	};
-	lastDate = new Date(data);
-})
-
-
 async function start() {
+	const parseDate = new Date();
+	console.log('Старт парсера: ', parseDate);
+
+	const dateFull = {
+		year: parseDate.getFullYear(),
+		month: parseDate.getMonth() + 1 < 10 ? `0${parseDate.getMonth()}` : parseDate.getMonth(),
+		day: parseDate.getDate() + 1 < 10 ? `0${parseDate.getDate()}` : parseDate.getDate(),
+		hours: parseDate.getHours() < 10 ? `0${parseDate.getHours()}` : parseDate.getHours(),
+		minutes: parseDate.getMinutes() < 10 ? `0${parseDate.getMinutes()}` : parseDate.getMinutes()
+	}
+
+	const date = `${dateFull.year}-${dateFull.month + 1}-${dateFull.day}--${dateFull.hours}.${dateFull.minutes}`;
+
+	let arr = [];
+	let result = [];
+	let unique = [];
+	let lastDate;
+
+	fs.readFile('./last-date.txt', 'utf8', (err, data) => {
+		if (err) {
+			console.error('Ошибка чтения файла "date.txt"...', err);
+			return;
+		};
+		lastDate = new Date(data);
+	})
 
 	for (let url of URL) {
 		try {
@@ -72,10 +75,8 @@ async function start() {
 	let arr2 = [];
 
 	try {
-		console.log('https://api.airframes.io/messages?timeframe=last-week&labels=10,1C,C1&text=-IM');
 		const res2 = await fetch('https://api.airframes.io/messages?timeframe=last-week&labels=10,1C,C1&text=-IM');
 		arr2 = await res2.json();
-		console.log(arr2);
 	} catch (error) {
 		console.log(error);
 	}
@@ -98,13 +99,11 @@ async function start() {
 		result.push(obj);
 	}
 
-
 	for (let i = 0; i < result.length; i++) {
 		const isFind = unique.find(obj => obj.text === result[i].text);
 		if (isFind) continue;
 		unique.push(result[i]);
 	}
-
 
 	const schema = [
 		{
@@ -156,16 +155,21 @@ async function start() {
 		filePath: `./output/output_${date}.xlsx`
 	})
 
-	fs.writeFile(`./date.txt`, String(parseDate), (err) => {
+	fs.writeFile('./last-date.txt', String(parseDate), (err) => {
 		if (err) {
-			console.error(`Произошла ошибка при обновлении файла "date.txt" ...`, err);
+			console.error('Произошла ошибка при обновлении файла "date.txt" ...', err);
 			return;
 		}
 	});
-
+	console.log('Завершено!');
 }
 
 start();
+
+setInterval(() => {
+	start();
+}, 3600000)
+
 
 /*
 https://api.airframes.io/messages?labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=MDINI&timeframe=last-week
