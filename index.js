@@ -1,5 +1,6 @@
 import writeXlsxFile from 'write-excel-file/node';
 import fs from 'fs';
+import { schema } from './schema.js';
 
 const regexp1 = /\/ID\w{4,6}/i;
 const regexp2 = /[a-zA-Z]{3}\w{6}\d{3}\//i;
@@ -13,7 +14,8 @@ const URL = [
 	'https://api.airframes.io/messages?limit=300&labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=OI%2FID',
 	'https://api.airframes.io/messages?limit=300&labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=WXR%2FID',
 	'https://api.airframes.io/messages?limit=300&labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=FTX%2FID',
-	'https://api.airframes.io/messages?limit=300&labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=%2FMR'
+	'https://api.airframes.io/messages?limit=300&labels=14,20,22,2S,35,1B,1S,2B,2P,2S,2U,4A,4I,H1&text=%2FMR',
+	'https://api.airframes.io/messages?limit=400&text=%2FMR'
 ];
 
 async function start() {
@@ -31,6 +33,7 @@ async function start() {
 	const date = `${dateFull.year}-${dateFull.month + 1}-${dateFull.day}--${dateFull.hours}.${dateFull.minutes}`;
 
 	let arr = [];
+	let arr2 = [];
 	let result = [];
 	let unique = [];
 	let lastDate;
@@ -48,55 +51,54 @@ async function start() {
 			console.log(url);
 			const res = await fetch(url);
 			const data = await res.json();
-			arr = arr.concat(data)
+			arr = arr.concat(data);
+
+			for (let item of arr) {
+
+				const itemDate = new Date(item.timestamp);
+
+				if (!item.text || !item.text.match(regexp1) || !item.text.match(regexp2) || itemDate < lastDate) {
+					continue
+				}
+
+				const obj = {
+					id: item.id,
+					icao: item.airframe.icao,
+					type: item.airframe.icaoType,
+					text: item.text.replace(/\r\n/, ''),
+					timestamp: item.timestamp ? new Date(item.timestamp) : ''
+				};
+				result.push(obj);
+			}
 		} catch (error) {
 			console.log(error);
 		}
 	}
 
-	for (let item of arr) {
-
-		const itemDate = new Date(item.timestamp);
-
-		if (!item.text || !item.text.match(regexp1) || !item.text.match(regexp2) || itemDate < lastDate) {
-			continue
-		}
-
-		const obj = {
-			id: item.id,
-			icao: item.airframe.icao,
-			type: item.airframe.icaoType,
-			text: item.text.replace(/\r\n/, ''),
-			timestamp: item.timestamp ? new Date(item.timestamp) : ''
-		};
-		result.push(obj);
-	}
-
-	let arr2 = [];
-
 	try {
+		console.log('https://api.airframes.io/messages?timeframe=last-week&labels=10,1C,C1&text=-IM');
 		const res2 = await fetch('https://api.airframes.io/messages?timeframe=last-week&labels=10,1C,C1&text=-IM');
 		arr2 = await res2.json();
+
+		for (let item2 of arr2) {
+
+			const itemDate2 = new Date(item2.timestamp);
+
+			if (!item2.text || !item2.text.includes('FPL-') || itemDate2 < lastDate) {
+				continue
+			}
+
+			const obj = {
+				id: item2.id,
+				icao: item2.airframe.icao,
+				type: item2.airframe.icaoType,
+				text: item2.text,
+				timestamp: item2.timestamp ? new Date(item2.timestamp) : ''
+			};
+			result.push(obj);
+		}
 	} catch (error) {
 		console.log(error);
-	}
-
-	for (let item2 of arr2) {
-
-		const itemDate2 = new Date(item2.timestamp);
-
-		if (!item2.text || !item2.text.includes('FPL-') || itemDate2 < lastDate) {
-			continue
-		}
-
-		const obj = {
-			id: item2.id,
-			icao: item2.airframe.icao,
-			type: item2.airframe.icaoType,
-			text: item2.text,
-			timestamp: item2.timestamp ? new Date(item2.timestamp) : ''
-		};
-		result.push(obj);
 	}
 
 	for (let i = 0; i < result.length; i++) {
@@ -104,51 +106,6 @@ async function start() {
 		if (isFind) continue;
 		unique.push(result[i]);
 	}
-
-	const schema = [
-		{
-			column: 'DATE-Z',
-			type: Date,
-			format: 'dd/mm/yyyy',
-			width: 13,
-			align: 'center',
-			fontSize: 9,
-			value: obj => obj.timestamp,
-		},
-		{
-			column: 'TIME-Z',
-			type: Date,
-			format: 'hh:mm',
-			width: 7,
-			align: 'center',
-			fontSize: 10,
-			value: obj => obj.timestamp
-		},
-		{
-			column: 'ICAO',
-			type: String,
-			width: 8,
-			align: 'center',
-			fontSize: 10,
-			value: obj => obj.icao
-		},
-		{
-			column: 'TYPE',
-			type: String,
-			width: 6,
-			align: 'center',
-			fontSize: 10,
-			value: obj => obj.type
-		},
-		{
-			column: 'TEXT',
-			type: String,
-			width: 120,
-			wrap: true,
-			fontSize: 10,
-			value: obj => obj.text
-		},
-	]
 
 	await writeXlsxFile(unique, {
 		schema,
@@ -168,7 +125,7 @@ start();
 
 setInterval(() => {
 	start();
-}, 3600000)
+}, 1800000)
 
 
 /*
