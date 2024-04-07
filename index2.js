@@ -8,10 +8,14 @@ import { findCallsign } from './utils/find-callsign.js';
 import { URL } from './constants/url.js';
 import { REGEXP } from './constants/regexp.js';
 
+import fetch from 'node-fetch';
+import { HttpsProxyAgent } from 'https-proxy-agent';
+
+
 const TIMEOUT = 1000 * 60 * 60;
 
 async function start() {
-
+	const agent = new HttpsProxyAgent('http://antonio:12345678@10.104.0.2:8080');
 	const parseDate = new Date();
 	console.log('Старт парсера: ', parseDate.toLocaleString());
 	const date = getParseDate(parseDate);
@@ -33,7 +37,7 @@ async function start() {
 	for (let url of URL) {
 		try {
 			console.log(url);
-			const res = await fetch(url);
+			const res = await fetch(url, { agent });
 			const data = await res.json();
 			arr = arr.concat(data);
 
@@ -66,7 +70,7 @@ async function start() {
 
 	try {
 		console.log('https://api.airframes.io/messages?limit=300&labels=10,1C,C1&text=-IM');
-		const res2 = await fetch('https://api.airframes.io/messages?limit=300&labels=10,1C,C1&text=-IM');
+		const res2 = await fetch('https://api.airframes.io/messages?limit=300&labels=10,1C,C1&text=-IM', { agent });
 		arr2 = await res2.json();
 
 		for (let item2 of arr2) {

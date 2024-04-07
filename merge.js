@@ -1,20 +1,12 @@
 import fs from 'fs';
 import readXlsxFile from 'read-excel-file/node';
 import writeXlsxFile from 'write-excel-file/node';
-import { schema } from './schema.js';
+import { schema } from './constants/schema.js';
+import { getParseDate } from './utils/get-date.js';
 
 const result = [];
 const parseDate = new Date();
-
-const dateFull = {
-	year: parseDate.getFullYear(),
-	month: parseDate.getMonth() + 1 < 10 ? `0${parseDate.getMonth()}` : parseDate.getMonth(),
-	day: parseDate.getDate() + 1 < 10 ? `0${parseDate.getDate()}` : parseDate.getDate(),
-	hours: parseDate.getHours() < 10 ? `0${parseDate.getHours()}` : parseDate.getHours(),
-	minutes: parseDate.getMinutes() < 10 ? `0${parseDate.getMinutes()}` : parseDate.getMinutes()
-}
-const date = `${dateFull.year}-${dateFull.month + 1}-${dateFull.day}--${dateFull.hours}.${dateFull.minutes}`;
-
+const date = getParseDate(parseDate);
 
 
 function merge() {
@@ -32,10 +24,14 @@ function merge() {
 			readXlsxFile(`./output/${item}`).then((rows) => {
 				for (let i = 1; i < rows.length; i++) {
 					const obj = {
+						timestamp: new Date(rows[i][0]),
 						icao: rows[i][2],
 						type: rows[i][3],
-						text: rows[i][4],
-						timestamp: new Date(rows[i][0])
+						callsign: rows[i][4],
+						mission: rows[i][5],
+						departure: rows[i][6],
+						arrival: rows[i][7],
+						text: rows[i][8],
 					};
 					result.push(obj);
 				}
